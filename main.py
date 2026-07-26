@@ -123,6 +123,22 @@ async def setroleping(interaction: discord.Interaction, role: discord.Role):
         ephemeral=True
     )
 
+@bot.tree.command(name="countdownevent", description="Check how long until the next Blackhole Event starts.")
+@is_allowed_guild()
+async def countdownevent(interaction: discord.Interaction):
+    next_event = get_next_event_time()
+    event_ts = int(next_event.timestamp())
+
+    embed = discord.Embed(
+        title="🌌 Blackhole Event Countdown",
+        description=f"**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
+        color=COLORS["countdown"],
+        timestamp=datetime.now(timezone.utc)
+    )
+    embed.set_footer(text="Blackhole Event System", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+
+    await interaction.response.send_message(embed=embed)
+
 @bot.tree.command(name="testmessage", description="Send a test notification alert.")
 @app_commands.checks.has_permissions(administrator=True)
 @is_allowed_guild()
