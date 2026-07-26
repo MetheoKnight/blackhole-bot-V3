@@ -129,15 +129,41 @@ async def countdownevent(interaction: discord.Interaction):
     next_event = get_next_event_time()
     event_ts = int(next_event.timestamp())
 
-    embed = discord.Embed(
-        title="🌌 Blackhole Event Countdown",
-        description=f"**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
-        color=COLORS["countdown"],
-        timestamp=datetime.now(timezone.utc)
-    )
-    embed.set_footer(text="Blackhole Event System", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+    def get_countdown_embed():
+        now = datetime.now(timezone.utc)
+        diff = max(0, int((next_event - now).total_seconds()))
+        hours, remainder = divmod(diff, 3600)
+        minutes, seconds = divmod(remainder, 60)
 
-    await interaction.response.send_message(embed=embed)
+        if hours > 0:
+            formatted_time = f"{hours}h {minutes:02d}m {seconds:02d}s"
+        else:
+            formatted_time = f"{minutes:02d}m {seconds:02d}s"
+
+        embed = discord.Embed(
+            title="🌌 Blackhole Event Countdown",
+            description=(
+                f"**Start Time:** <t:{event_ts}:F> (`<t:{event_ts}:T>`)\n"
+                f"**Live Countdown:** `{formatted_time}`\n"
+                f"**Discord Dynamic:** <t:{event_ts}:R>"
+            ),
+            color=COLORS["countdown"],
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_footer(text="Blackhole Event System • Live Updating", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+        return embed
+
+    # Send initial embed
+    await interaction.response.send_message(embed=get_countdown_embed())
+
+    # Live-update the embed every 2 seconds for 1 minute
+    try:
+        msg = await interaction.original_response()
+        for _ in range(30):
+            await asyncio.sleep(2)
+            await msg.edit(embed=get_countdown_embed())
+    except Exception:
+        pass
 
 @bot.tree.command(name="testmessage", description="Send a test notification alert.")
 @app_commands.checks.has_permissions(administrator=True)
