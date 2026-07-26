@@ -354,11 +354,16 @@ async def bot_loop():
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash command(s).")
-    except Exception as e:
-        print(f"Failed to sync slash commands: {e}")
+    
+    # Force immediate sync for allowed guilds
+    for guild_id in ALLOWED_GUILDS:
+        guild = discord.Object(id=guild_id)
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+            print(f"Synced {len(synced)} command(s) to guild {guild_id}.")
+        except Exception as e:
+            print(f"Failed to sync commands to guild {guild_id}: {e}")
 
     bot.loop.create_task(bot_loop())
 
