@@ -354,11 +354,23 @@ async def bot_loop():
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+
+    # 1. Clear duplicate guild-specific commands registered previously
+    for guild_id in ALLOWED_GUILDS:
+        guild = discord.Object(id=guild_id)
+        bot.tree.clear_commands(guild=guild)
+        try:
+            await bot.tree.sync(guild=guild)
+            print(f"Cleared duplicate guild commands for server {guild_id}.")
+        except Exception as e:
+            print(f"Failed to clear guild commands for {guild_id}: {e}")
+
+    # 2. Sync clean global commands
     try:
         synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash command(s).")
+        print(f"Synced {len(synced)} global slash command(s).")
     except Exception as e:
-        print(f"Failed to sync slash commands: {e}")
+        print(f"Failed to sync global slash commands: {e}")
 
     bot.loop.create_task(bot_loop())
 
