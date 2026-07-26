@@ -30,6 +30,15 @@ ROLES_FILE = "roles.json"
 
 ALLOWED_GUILDS = [1459542443509944373, 1462506305427083406, 1530735325213757470]
 
+# Default fallbacks in case JSON files are reset on hosting restarts
+DEFAULT_CHANNELS = {
+    "1462506305427083406": 1530810264642130041
+}
+
+DEFAULT_ROLES = {
+    "1462506305427083406": 1530810691877863525
+}
+
 IMAGES = {
     "30m": "https://media.discordapp.net/attachments/1476195716648009929/1530564249238241353/Untitled-1.png?ex=6a660889&is=6a64b709&hm=d8e38f9837fe631ad9afdc0d22ceaa1f4bef9142920d7c7c8df52bd0a3d995be&=&format=webp&quality=lossless",
     "10m": "https://media.discordapp.net/attachments/1476195716648009929/1530564247774298153/10_minutes.png?ex=6a660889&is=6a64b709&hm=8a2ade4a92786edcdaed126c442a9fc076e0b5dd8b8ec3d7e50bfcd1824e10a8&=&format=webp&quality=lossless",
@@ -51,26 +60,30 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 def load_channels():
+    data = DEFAULT_CHANNELS.copy()
     if os.path.exists(CHANNELS_FILE):
         try:
             with open(CHANNELS_FILE, "r") as f:
-                return json.load(f)
+                file_data = json.load(f)
+                data.update(file_data)
         except Exception:
-            return {}
-    return {}
+            pass
+    return data
 
 def save_channels(data):
     with open(CHANNELS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 def load_roles():
+    data = DEFAULT_ROLES.copy()
     if os.path.exists(ROLES_FILE):
         try:
             with open(ROLES_FILE, "r") as f:
-                return json.load(f)
+                file_data = json.load(f)
+                data.update(file_data)
         except Exception:
-            return {}
-    return {}
+            pass
+    return data
 
 def save_roles(data):
     with open(ROLES_FILE, "w") as f:
@@ -139,7 +152,7 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["10m"],
             image_url=IMAGES["10m"],
-            ping=True
+            ping=False
         )
     elif opt == "5m":
         await broadcast_embed(
@@ -252,7 +265,7 @@ async def bot_loop():
                 description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["10m"],
                 image_url=IMAGES["10m"],
-                ping=True
+                ping=False
             )
 
         now = datetime.now(timezone.utc)
