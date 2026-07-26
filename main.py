@@ -139,7 +139,7 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["10m"],
             image_url=IMAGES["10m"],
-            ping=True
+            ping=False
         )
     elif opt == "5m":
         await broadcast_embed(
@@ -252,7 +252,7 @@ async def bot_loop():
                 description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["10m"],
                 image_url=IMAGES["10m"],
-                ping=True
+                ping=False
             )
 
         now = datetime.now(timezone.utc)
