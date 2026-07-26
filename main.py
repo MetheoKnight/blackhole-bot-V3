@@ -26,7 +26,12 @@ def run_flask():
 # --- BOT CONFIGURATION ---
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN", "YOUR_BOT_TOKEN_HERE")
 EVENT_MINUTE = int(os.environ.get("EVENT_MINUTE", 0))
+
 CHANNELS_FILE = "channels.json"
+ROLES_FILE = "roles.json"
+
+# RESTRICT TO THESE SERVER IDs ONLY
+ALLOWED_GUILDS = [1459542443509944373, 1462506305427083406]
 
 # --- EVENT IMAGES ---
 IMAGES = {
@@ -65,9 +70,32 @@ def save_channels(data):
     with open(CHANNELS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+def load_roles():
+    if os.path.exists(ROLES_FILE):
+        try:
+            with open(ROLES_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_roles(data):
+    with open(ROLES_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+# --- PERMISSION CHECKS ---
+def is_allowed_guild():
+    """Custom check to ensure commands are only run in allowed servers."""
+    def predicate(interaction: discord.Interaction):
+        if interaction.guild_id not in ALLOWED_GUILDS:
+            raise app_commands.CheckFailure("Unauthorized Server")
+        return True
+    return app_commands.check(predicate)
+
 # --- SLASH COMMANDS ---
 @bot.tree.command(name="setchannel", description="Set the channel where Blackhole Event alerts will be sent.")
 @app_commands.checks.has_permissions(administrator=True)
+@is_allowed_guild()
 async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel = None):
     target_channel = channel or interaction.channel
     channels = load_channels()
@@ -79,14 +107,33 @@ async def setchannel(interaction: discord.Interaction, channel: discord.TextChan
         ephemeral=True
     )
 
-@setchannel.error
-async def setchannel_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message("❌ You need Administrator permissions to use this command.", ephemeral=True)
+@bot.tree.command(name="setroleping", description="Set the role to ping for Blackhole Event alerts.")
+@app_commands.checks.has_permissions(administrator=True)
+@is_allowed_guild()
+async def setroleping(interaction: discord.Interaction, role: discord.Role):
+    roles = load_roles()
+    roles[str(interaction.guild_id)] = role.id
+    save_roles(roles)
+    
+    await interaction.response.send_message(
+        f"✅ Blackhole event ping role successfully set to {role.mention}!",
+        ephemeral=True
+    )
+
+# Generic error handler for both commands
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CheckFailure):
+        if "Unauthorized Server" in str(error):
+            await interaction.response.send_message("❌ This bot is not authorized to be used in this server.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ You need Administrator permissions to use this command.", ephemeral=True)
 
 # --- BROADCAST HELPER ---
-async def broadcast_embed(title, description, color, image_url=None):
+async def broadcast_embed(title, description, color, image_url=None, ping=True):
     channels = load_channels()
+    roles = load_roles()
+    
     embed = discord.Embed(
         title=title,
         description=description,
@@ -98,14 +145,30 @@ async def broadcast_embed(title, description, color, image_url=None):
         embed.set_image(url=image_url)
 
     sent_messages = []
-    for guild_id, channel_id in channels.items():
+    for guild_id_str, channel_id in channels.items():
+        # Extra security: skip broadcasting if the guild isn't in the allowed list
+        if int(guild_id_str) not in ALLOWED_GUILDS:
+            continue
+            
         try:
             ch = bot.get_channel(int(channel_id))
+            if ch is None:
+                ch = await bot.fetch_channel(int(channel_id))
+                
             if ch:
-                msg = await ch.send(embed=embed)
+                content = ""
+                # Add role ping to message content if enabled and a role is set
+                if ping:
+                    role_id = roles.get(guild_id_str)
+                    if role_id:
+                        content = f"<@&{role_id}>"
+
+                msg = await ch.send(content=content, embed=embed)
                 sent_messages.append((ch, msg))
+        except discord.Forbidden:
+            print(f"❌ ERROR: Bot does not have permission in channel {channel_id}")
         except Exception as e:
-            print(f"Failed to send alert to channel {channel_id}: {e}")
+            print(f"❌ ERROR: Failed to send alert to channel {channel_id}: {e}")
             
     return sent_messages
 
@@ -126,7 +189,7 @@ async def bot_loop():
         next_event = get_next_event_time()
         event_ts = int(next_event.timestamp())
 
-        # --- 30 MINUTES ALERT ---
+        # --- 30 MINUTES ALERT (NO PING) ---
         now = datetime.now(timezone.utc)
         sleep_30m = (next_event - timedelta(minutes=30) - now).total_seconds()
         if sleep_30m > 0:
@@ -135,10 +198,11 @@ async def bot_loop():
                 title="⏳ Blackhole Event Alert",
                 description=f"The **Blackhole Event** will begin in **30 minutes**!\n\n**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["30m"],
-                image_url=IMAGES["30m"]
+                image_url=IMAGES["30m"],
+                ping=False
             )
 
-        # --- 10 MINUTES ALERT ---
+        # --- 10 MINUTES ALERT (PINGS) ---
         now = datetime.now(timezone.utc)
         sleep_10m = (next_event - timedelta(minutes=10) - now).total_seconds()
         if sleep_10m > 0:
@@ -147,10 +211,11 @@ async def bot_loop():
                 title="⏰ Blackhole Event Approaching",
                 description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["10m"],
-                image_url=IMAGES["10m"]
+                image_url=IMAGES["10m"],
+                ping=True
             )
 
-        # --- 5 MINUTES ALERT ---
+        # --- 5 MINUTES ALERT (PINGS) ---
         now = datetime.now(timezone.utc)
         sleep_5m = (next_event - timedelta(minutes=5) - now).total_seconds()
         if sleep_5m > 0:
@@ -159,10 +224,11 @@ async def bot_loop():
                 title="🌌 Blackhole Event Impending",
                 description=f"Final preparations! **5 minutes** left until spawn!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["5m"],
-                image_url=IMAGES["5m"]
+                image_url=IMAGES["5m"],
+                ping=True
             )
 
-        # --- 1 MINUTE ALERT ---
+        # --- 1 MINUTE ALERT (PINGS) ---
         now = datetime.now(timezone.utc)
         sleep_1m = (next_event - timedelta(minutes=1) - now).total_seconds()
         if sleep_1m > 0:
@@ -171,10 +237,11 @@ async def bot_loop():
                 title="⚠️ Blackhole Event Imminent",
                 description=f"Get into position! **1 minute** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["1m"],
-                image_url=IMAGES["1m"]
+                image_url=IMAGES["1m"],
+                ping=True
             )
 
-        # --- LIVE 3... 2... 1... COUNTDOWN ---
+        # --- LIVE 3... 2... 1... COUNTDOWN (NO PING) ---
         now = datetime.now(timezone.utc)
         sleep_3s = (next_event - timedelta(seconds=3) - now).total_seconds()
         if sleep_3s > 0:
@@ -183,7 +250,8 @@ async def bot_loop():
             sent_msgs = await broadcast_embed(
                 title="🚨 LIVE COUNTDOWN",
                 description="# 3️⃣ ...",
-                color=COLORS["countdown"]
+                color=COLORS["countdown"],
+                ping=False
             )
             
             await asyncio.sleep(1)
@@ -202,7 +270,7 @@ async def bot_loop():
                 except Exception:
                     pass
 
-        # --- EVENT STARTED ALERT ---
+        # --- EVENT STARTED ALERT (PINGS) ---
         now = datetime.now(timezone.utc)
         sleep_start = (next_event - now).total_seconds()
         if sleep_start > 0:
@@ -212,7 +280,8 @@ async def bot_loop():
             title="🚨 BLACKHOLE EVENT HAS STARTED! 🚨",
             description="The Blackhole is now **ACTIVE**! Jump into the game immediately!",
             color=COLORS["started"],
-            image_url=IMAGES["started"]
+            image_url=IMAGES["started"],
+            ping=True
         )
 
         await asyncio.sleep(10)
