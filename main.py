@@ -12,11 +12,11 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Blackhole Bot is running 24/7!"
+    return "Nuclear Blackhole Monitoring System is active 24/7!"
 
 @app.route('/status')
 def status():
-    return jsonify({"status": "online", "timestamp": datetime.now(timezone.utc).isoformat()})
+    return jsonify({"status": "online", "system": "radiation_monitors", "timestamp": datetime.now(timezone.utc).isoformat()})
 
 def run_flask():
     port = int(os.environ.get("PORT", 5000))
@@ -30,7 +30,6 @@ ROLES_FILE = "roles.json"
 
 ALLOWED_GUILDS = [1459542443509944373, 1462506305427083406, 1530735325213757470]
 
-# Default fallbacks in case JSON files are reset on hosting restarts
 DEFAULT_CHANNELS = {
     "1462506305427083406": 1530810264642130041
 }
@@ -48,12 +47,12 @@ IMAGES = {
 }
 
 COLORS = {
-    "30m": 0x3498DB,
-    "10m": 0xF1C40F,
-    "5m": 0xE67E22,
-    "1m": 0xE74C3C,
-    "countdown": 0x9B59B6,
-    "started": 0x2ECC71
+    "30m": 0xF1C40F,        # Radiation Caution Yellow
+    "10m": 0xE67E22,        # Biohazard Orange
+    "5m": 0xFF3300,         # Critical Thermal Red-Orange
+    "1m": 0x990000,         # Dark Emergency Red
+    "countdown": 0x8E44AD,  # Toxic Singularity Purple
+    "started": 0x00FF66     # Radioactive Meltdown Neon Green
 }
 
 intents = discord.Intents.default()
@@ -96,7 +95,7 @@ def is_allowed_guild():
         return True
     return app_commands.check(predicate)
 
-@bot.tree.command(name="setchannel", description="Set the channel where Blackhole Event alerts will be sent.")
+@bot.tree.command(name="setchannel", description="Set the bunker alert channel for Nuclear Blackhole notifications.")
 @app_commands.checks.has_permissions(administrator=True)
 @is_allowed_guild()
 async def setchannel(interaction: discord.Interaction, channel: discord.TextChannel = None):
@@ -106,11 +105,11 @@ async def setchannel(interaction: discord.Interaction, channel: discord.TextChan
     save_channels(channels)
     
     await interaction.response.send_message(
-        f"✅ Blackhole notifications channel successfully set to {target_channel.mention}!",
+        f"☣️ **NUCLEAR BROADCAST SET:** Alert channel established at {target_channel.mention}!",
         ephemeral=True
     )
 
-@bot.tree.command(name="setroleping", description="Set the role to ping for Blackhole Event alerts.")
+@bot.tree.command(name="setroleping", description="Set the Hazmat/Survival team role to ping for nuclear alerts.")
 @app_commands.checks.has_permissions(administrator=True)
 @is_allowed_guild()
 async def setroleping(interaction: discord.Interaction, role: discord.Role):
@@ -119,35 +118,59 @@ async def setroleping(interaction: discord.Interaction, role: discord.Role):
     save_roles(roles)
     
     await interaction.response.send_message(
-        f"✅ Blackhole event ping role successfully set to {role.mention}!",
+        f"☢️ **HAZMAT PROTOCOL UPDATED:** Emergency ping role assigned to {role.mention}!",
         ephemeral=True
     )
 
-@bot.tree.command(name="countdownevent", description="Check how long until the next Blackhole Event starts.")
+@bot.tree.command(name="countdownevent", description="Monitor the radiation telemetry and countdown to the next Nuclear Blackhole.")
 @is_allowed_guild()
 async def countdownevent(interaction: discord.Interaction):
     next_event = get_next_event_time()
     event_ts = int(next_event.timestamp())
 
-    embed = discord.Embed(
-        title="🌌 Blackhole Event Countdown",
-        description=f"**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
-        color=COLORS["countdown"],
-        timestamp=datetime.now(timezone.utc)
-    )
-    embed.set_footer(text="Blackhole Event System", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+    def get_countdown_embed():
+        now = datetime.now(timezone.utc)
+        diff = max(0, int((next_event - now).total_seconds()))
+        hours, remainder = divmod(diff, 3600)
+        minutes, seconds = divmod(remainder, 60)
 
-    await interaction.response.send_message(embed=embed)
+        if hours > 0:
+            formatted_time = f"{hours}h {minutes:02d}m {seconds:02d}s"
+        else:
+            formatted_time = f"{minutes:02d}m {seconds:02d}s"
 
-@bot.tree.command(name="testmessage", description="Send a test notification alert.")
+        embed = discord.Embed(
+            title="☢️ RAD-MONITOR: Nuclear Blackhole Telemetry",
+            description=(
+                f"**Detonation Time:** <t:{event_ts}:F>\n"
+                f"**Live Time to Meltdown:** `{formatted_time}`\n"
+                f"**Relative Time:** <t:{event_ts}:R>"
+            ),
+            color=COLORS["countdown"],
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_footer(text="Nuclear Hazard System • Radiation Monitoring Active", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+        return embed
+
+    await interaction.response.send_message(embed=get_countdown_embed())
+
+    try:
+        msg = await interaction.original_response()
+        for _ in range(30):
+            await asyncio.sleep(2)
+            await msg.edit(embed=get_countdown_embed())
+    except Exception:
+        pass
+
+@bot.tree.command(name="testmessage", description="Simulate a Nuclear Blackhole warning alert siren.")
 @app_commands.checks.has_permissions(administrator=True)
 @is_allowed_guild()
 @app_commands.choices(option=[
-    app_commands.Choice(name="30m", value="30m"),
-    app_commands.Choice(name="10m", value="10m"),
-    app_commands.Choice(name="5m", value="5m"),
-    app_commands.Choice(name="1m", value="1m"),
-    app_commands.Choice(name="start", value="started")
+    app_commands.Choice(name="30m - Radiation Spike", value="30m"),
+    app_commands.Choice(name="10m - Hazard Warning", value="10m"),
+    app_commands.Choice(name="5m - Core Instability", value="5m"),
+    app_commands.Choice(name="1m - Evacuation Siren", value="1m"),
+    app_commands.Choice(name="start - Nuclear Singularity Active", value="started")
 ])
 async def testmessage(interaction: discord.Interaction, option: app_commands.Choice[str]):
     opt = option.value
@@ -156,54 +179,54 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
 
     if opt == "30m":
         await broadcast_embed(
-            title="⏳ Blackhole Event Alert",
-            description=f"The **Blackhole Event** will begin in **30 minutes**!\n\n**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
+            title="☢️ RAD-ALERT: Blackhole Criticality Spike Detected",
+            description=f"Sensors report high radioactive charge! The **Nuclear Blackhole Event** will form in **30 minutes**!\n\n**Detonation Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["30m"],
             image_url=IMAGES["30m"],
             ping=False
         )
     elif opt == "10m":
         await broadcast_embed(
-            title="⏰ Blackhole Event Approaching",
-            description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
+            title="⚠️ HAZARD WARNING: Radiation Levels Escalating",
+            description=f"Core instability rising! Severe fallout expected! Only **10 minutes** until singularity breach!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["10m"],
             image_url=IMAGES["10m"],
             ping=False
         )
     elif opt == "5m":
         await broadcast_embed(
-            title="🌌 Blackhole Event Impending",
-            description=f"Final preparations! **5 minutes** left until spawn!\n\n**Countdown:** <t:{event_ts}:R>",
+            title="☣️ CRITICAL WARNING: Core Breach Imminent",
+            description=f"Equip hazmat gear and prep for deployment! **5 minutes** left before total nuclear meltdown!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["5m"],
             image_url=IMAGES["5m"],
             ping=True
         )
     elif opt == "1m":
         await broadcast_embed(
-            title="⚠️ Blackhole Event Imminent",
-            description=f"Get into position! **1 minute** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
+            title="🚨 SIREN PROTOCOL: CODE RED SINGULARITY",
+            description=f"ALL UNITS DOCK NOW! **1 minute** until the Nuclear Blackhole erupts!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["1m"],
             image_url=IMAGES["1m"],
             ping=True
         )
     elif opt == "started":
         await broadcast_embed(
-            title="🚨 BLACKHOLE EVENT HAS STARTED! 🚨",
-            description="The Blackhole is now **ACTIVE**! Jump into the game immediately!",
+            title="💥 NUCLEAR BLACKHOLE DETONATION ACTIVE! 💥",
+            description="**TOTAL MELTDOWN IN PROGRESS!** The Radioactive Blackhole has erupted! CONTAIN THE SINGULARITY IMMEDIATELY!",
             color=COLORS["started"],
             image_url=IMAGES["started"],
             ping=True
         )
 
-    await interaction.response.send_message(f"✅ Test message sent for option: `{option.name}`", ephemeral=True)
+    await interaction.response.send_message(f"✅ Nuclear alert test executed for stage: `{option.name}`", ephemeral=True)
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CheckFailure):
         if "Unauthorized Server" in str(error):
-            await interaction.response.send_message("❌ This bot is not authorized to be used in this server.", ephemeral=True)
+            await interaction.response.send_message("❌ Unauthorized sector. Access denied.", ephemeral=True)
         else:
-            await interaction.response.send_message("❌ You need Administrator permissions to use this command.", ephemeral=True)
+            await interaction.response.send_message("❌ You require High Command (Administrator) authorization for this protocol.", ephemeral=True)
 
 async def broadcast_embed(title, description, color, image_url=None, ping=True):
     channels = load_channels()
@@ -215,7 +238,7 @@ async def broadcast_embed(title, description, color, image_url=None, ping=True):
         color=color,
         timestamp=datetime.now(timezone.utc)
     )
-    embed.set_footer(text="Blackhole Event System • Auto Notifier", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
+    embed.set_footer(text="Nuclear Hazard System • Automated Siren Protocol", icon_url="https://cdn.discordapp.com/embed/avatars/0.png")
     if image_url:
         embed.set_image(url=image_url)
 
@@ -239,9 +262,9 @@ async def broadcast_embed(title, description, color, image_url=None, ping=True):
                 msg = await ch.send(content=content, embed=embed)
                 sent_messages.append((ch, msg))
         except discord.Forbidden:
-            print(f"❌ ERROR: Bot does not have permission in channel {channel_id}")
+            print(f"❌ ERROR: Bot lacks broadcast permissions in channel {channel_id}")
         except Exception as e:
-            print(f"❌ ERROR: Failed to send alert to channel {channel_id}: {e}")
+            print(f"❌ ERROR: Radiation warning failed for channel {channel_id}: {e}")
             
     return sent_messages
 
@@ -254,7 +277,7 @@ def get_next_event_time():
 
 async def bot_loop():
     await bot.wait_until_ready()
-    print("🌌 Background Alert Loop Active.")
+    print("☢️ Nuclear Telemetry Loop Online & Monitoring.")
 
     while not bot.is_closed():
         next_event = get_next_event_time()
@@ -265,8 +288,8 @@ async def bot_loop():
         if sleep_30m > 0:
             await asyncio.sleep(sleep_30m)
             await broadcast_embed(
-                title="⏳ Blackhole Event Alert",
-                description=f"The **Blackhole Event** will begin in **30 minutes**!\n\n**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
+                title="☢️ RAD-ALERT: Blackhole Criticality Spike Detected",
+                description=f"Sensors report high radioactive charge! The **Nuclear Blackhole Event** will form in **30 minutes**!\n\n**Detonation Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["30m"],
                 image_url=IMAGES["30m"],
                 ping=False
@@ -277,8 +300,8 @@ async def bot_loop():
         if sleep_10m > 0:
             await asyncio.sleep(sleep_10m)
             await broadcast_embed(
-                title="⏰ Blackhole Event Approaching",
-                description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
+                title="⚠️ HAZARD WARNING: Radiation Levels Escalating",
+                description=f"Core instability rising! Severe fallout expected! Only **10 minutes** until singularity breach!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["10m"],
                 image_url=IMAGES["10m"],
                 ping=False
@@ -289,8 +312,8 @@ async def bot_loop():
         if sleep_5m > 0:
             await asyncio.sleep(sleep_5m)
             await broadcast_embed(
-                title="🌌 Blackhole Event Impending",
-                description=f"Final preparations! **5 minutes** left until spawn!\n\n**Countdown:** <t:{event_ts}:R>",
+                title="☣️ CRITICAL WARNING: Core Breach Imminent",
+                description=f"Equip hazmat gear and prep for deployment! **5 minutes** left before total nuclear meltdown!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["5m"],
                 image_url=IMAGES["5m"],
                 ping=True
@@ -301,8 +324,8 @@ async def bot_loop():
         if sleep_1m > 0:
             await asyncio.sleep(sleep_1m)
             await broadcast_embed(
-                title="⚠️ Blackhole Event Imminent",
-                description=f"Get into position! **1 minute** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
+                title="🚨 SIREN PROTOCOL: CODE RED SINGULARITY",
+                description=f"ALL UNITS DOCK NOW! **1 minute** until the Nuclear Blackhole erupts!\n\n**Countdown:** <t:{event_ts}:R>",
                 color=COLORS["1m"],
                 image_url=IMAGES["1m"],
                 ping=True
@@ -314,7 +337,7 @@ async def bot_loop():
             await asyncio.sleep(sleep_3s)
             
             sent_msgs = await broadcast_embed(
-                title="🚨 LIVE COUNTDOWN",
+                title="☢️ DETONATION SEQUENCE",
                 description="# 3️⃣ ...",
                 color=COLORS["countdown"],
                 ping=False
@@ -323,7 +346,7 @@ async def bot_loop():
             await asyncio.sleep(1)
             for ch, msg in sent_msgs:
                 try:
-                    embed = discord.Embed(title="🚨 LIVE COUNTDOWN", description="# 2️⃣ ..", color=COLORS["countdown"])
+                    embed = discord.Embed(title="☢️ DETONATION SEQUENCE", description="# 2️⃣ ..", color=COLORS["countdown"])
                     await msg.edit(embed=embed)
                 except Exception:
                     pass
@@ -331,7 +354,7 @@ async def bot_loop():
             await asyncio.sleep(1)
             for ch, msg in sent_msgs:
                 try:
-                    embed = discord.Embed(title="🚨 LIVE COUNTDOWN", description="# 1️⃣ .", color=COLORS["countdown"])
+                    embed = discord.Embed(title="☢️ DETONATION SEQUENCE", description="# 1️⃣ .", color=COLORS["countdown"])
                     await msg.edit(embed=embed)
                 except Exception:
                     pass
@@ -342,8 +365,8 @@ async def bot_loop():
             await asyncio.sleep(sleep_start)
 
         await broadcast_embed(
-            title="🚨 BLACKHOLE EVENT HAS STARTED! 🚨",
-            description="The Blackhole is now **ACTIVE**! Jump into the game immediately!",
+            title="💥 NUCLEAR BLACKHOLE DETONATION ACTIVE! 💥",
+            description="**TOTAL MELTDOWN IN PROGRESS!** The Radioactive Blackhole has erupted! CONTAIN THE SINGULARITY IMMEDIATELY!",
             color=COLORS["started"],
             image_url=IMAGES["started"],
             ping=True
@@ -355,22 +378,22 @@ async def bot_loop():
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
 
-    # 1. Clear duplicate guild-specific commands registered previously
+    # Clear duplicate guild commands
     for guild_id in ALLOWED_GUILDS:
         guild = discord.Object(id=guild_id)
         bot.tree.clear_commands(guild=guild)
         try:
             await bot.tree.sync(guild=guild)
-            print(f"Cleared duplicate guild commands for server {guild_id}.")
+            print(f"Cleared duplicate guild commands for sector {guild_id}.")
         except Exception as e:
-            print(f"Failed to clear guild commands for {guild_id}: {e}")
+            print(f"Failed to clear guild commands for sector {guild_id}: {e}")
 
-    # 2. Sync clean global commands
+    # Sync clean global commands
     try:
         synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} global slash command(s).")
+        print(f"Synced {len(synced)} global nuclear command(s).")
     except Exception as e:
-        print(f"Failed to sync global slash commands: {e}")
+        print(f"Failed to sync global commands: {e}")
 
     bot.loop.create_task(bot_loop())
 
