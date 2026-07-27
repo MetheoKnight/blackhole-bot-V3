@@ -179,6 +179,7 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
     opt = option.value
     next_event = get_next_event_time()
     event_ts = int(next_event.timestamp())
+    current_guild = interaction.guild_id
 
     if opt == "30m":
         await broadcast_embed(
@@ -186,7 +187,8 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"The **Blackhole Event** will begin in **30 minutes**!\n\n**Start Time:** <t:{event_ts}:F>\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["30m"],
             image_url=IMAGES["30m"],
-            ping=False
+            ping=False,
+            target_guild_id=current_guild
         )
     elif opt == "10m":
         await broadcast_embed(
@@ -194,7 +196,8 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"Prepare yourselves! Only **10 minutes** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["10m"],
             image_url=IMAGES["10m"],
-            ping=False
+            ping=False,
+            target_guild_id=current_guild
         )
     elif opt == "5m":
         await broadcast_embed(
@@ -202,7 +205,8 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"Final preparations! **5 minutes** left until spawn!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["5m"],
             image_url=IMAGES["5m"],
-            ping=True
+            ping=True,
+            target_guild_id=current_guild
         )
     elif opt == "1m":
         await broadcast_embed(
@@ -210,7 +214,8 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description=f"Get into position! **1 minute** remaining!\n\n**Countdown:** <t:{event_ts}:R>",
             color=COLORS["1m"],
             image_url=IMAGES["1m"],
-            ping=True
+            ping=True,
+            target_guild_id=current_guild
         )
     elif opt == "started":
         await broadcast_embed(
@@ -218,7 +223,8 @@ async def testmessage(interaction: discord.Interaction, option: app_commands.Cho
             description="The Blackhole is now **ACTIVE**! Jump into the game immediately!",
             color=COLORS["started"],
             image_url=IMAGES["started"],
-            ping=True
+            ping=True,
+            target_guild_id=current_guild
         )
 
     await interaction.response.send_message(f"✅ Test message sent for option: `{option.name}`", ephemeral=True)
@@ -231,7 +237,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         else:
             await interaction.response.send_message("❌ You need Administrator permissions to use this command.", ephemeral=True)
 
-async def broadcast_embed(title, description, color, image_url=None, ping=True):
+async def broadcast_embed(title, description, color, image_url=None, ping=True, target_guild_id=None):
     channels = load_channels()
     roles = load_roles()
     
@@ -246,8 +252,16 @@ async def broadcast_embed(title, description, color, image_url=None, ping=True):
         embed.set_image(url=image_url)
 
     sent_messages = []
-    for guild_id_str, channel_id in channels.items():
-        if int(guild_id_str) not in ALLOWED_GUILDS:
+    
+    # Filter targets if target_guild_id is provided
+    if target_guild_id is not None:
+        channel_id = channels.get(str(target_guild_id))
+        items_to_process = [(str(target_guild_id), channel_id)] if channel_id else []
+    else:
+        items_to_process = list(channels.items())
+
+    for guild_id_str, channel_id in items_to_process:
+        if not channel_id or int(guild_id_str) not in ALLOWED_GUILDS:
             continue
             
         try:
