@@ -144,7 +144,7 @@ async def countdownevent(interaction: discord.Interaction):
             title="🌌 Blackhole Event Countdown",
             description=(
                 f"**Start Time:** <t:{event_ts}:F>\n"
-                f"**Live Countdown:** `<t:{event_ts}:R>"
+                f"**Countdown:** <t:{event_ts}:R>"
             ),
             color=COLORS["countdown"],
             timestamp=datetime.now(timezone.utc)
