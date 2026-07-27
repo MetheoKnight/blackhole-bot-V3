@@ -143,9 +143,8 @@ async def countdownevent(interaction: discord.Interaction):
         embed = discord.Embed(
             title="🌌 Blackhole Event Countdown",
             description=(
-                f"**Start Time:** <t:{event_ts}:F> (`<t:{event_ts}:T>`)\n"
+                f"**Start Time:** <t:{event_ts}:F>\n"
                 f"**Live Countdown:** `{formatted_time}`\n"
-                f"**Discord Dynamic:** <t:{event_ts}:R>"
             ),
             color=COLORS["countdown"],
             timestamp=datetime.now(timezone.utc)
